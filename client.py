@@ -11,7 +11,7 @@ class Iperf3MuxClient(Protocol):
         self.transport.write("SENDPORT\r\n".encode())
 
     def dataReceived(self, data):
-        print("Data received: {}".format(data))
+        print("Data received: {}".format(data.decode()))
 
 
 if __name__ == "__main__":
