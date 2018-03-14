@@ -5,11 +5,11 @@ import threading
 import random
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
-from twisted.protocols.basic import LineReceiver
+from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import reactor
 
 
-class Iperf3Mux(LineReceiver):
+class Iperf3MuxServer(LineOnlyReceiver):
 
     def __init__(self, factory):
         self.factory = factory
@@ -31,8 +31,8 @@ class Iperf3Mux(LineReceiver):
                 self.sendLine(self.server_port)
             else:
                 pass
-                # raise error
-                # close connection
+                # log error
+                self.transport.loseConnection()
         else:
             if line == "SENDPORT":
                 self.stop_server()
@@ -41,8 +41,8 @@ class Iperf3Mux(LineReceiver):
                 self.sendLine(self.server_port)
             else:
                 pass
-                # raise error
-                # close connection
+                # log error
+                self.transport.loseConnection()
 
     def run_server(self, port):
         server = iperf3.Server()
@@ -62,6 +62,6 @@ class Iperf3Mux(LineReceiver):
 
 if __name__ == "__main__":
     endpoint = TCP4ServerEndpoint(reactor, 10000)
-    endpoint.listen(Factory.forProtocol(Iperf3Mux))
-    #reactor.listenTCP(10000, Factory.forProtocol(Iperf3Mux))
+    endpoint.listen(Factory.forProtocol(Iperf3MuxServer))
+    #reactor.listenTCP(10000, Factory.forProtocol(Iperf3MuxServer))
     reactor.run()
