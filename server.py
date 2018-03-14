@@ -11,8 +11,7 @@ from twisted.internet import reactor
 
 class Iperf3MuxServer(LineOnlyReceiver):
 
-    def __init__(self, factory):
-        self.factory = factory
+    def __init__(self):
         self.server_thread = None
         self.server_port = None
 
