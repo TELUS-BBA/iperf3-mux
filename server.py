@@ -16,30 +16,33 @@ class Iperf3MuxServer(LineOnlyReceiver):
         self.server_port = None
 
     def connectionMade(self):
-        pass
+        print("Connection made")
 
     def connectionLost(self, reason):
         if (self.server_port is not None) or (self.server_thread is not None):
             self.stop_server()
         
     def lineReceived(self, line):
+        decoded_line = line.decode()
         if self.server_port is None:
-            if line == "SENDPORT":
+            if decoded_line == "SENDPORT":
+                print("SENDPORT received when self.server_port was None")
                 self.server_port = random.randrange(10001, 20001)
                 self.run_server(self.server_port)
-                self.sendLine(self.server_port)
+                self.sendLine(str(self.server_port).encode())
             else:
-                pass
+                print("{} received when self.server_port was None".format(line))
                 # log error
                 self.transport.loseConnection()
         else:
-            if line == "SENDPORT":
+            if decoded_line == "SENDPORT":
+                print("SENDPORT received when self.server_port was NOT None")
                 self.stop_server()
                 self.server_port = random.randrange(10001, 20001)
                 self.run_server(self.server_port)
                 self.sendLine(self.server_port)
             else:
-                pass
+                print("{} received when self.server_port was NOT None".format(line))
                 # log error
                 self.transport.loseConnection()
 
@@ -63,4 +66,5 @@ if __name__ == "__main__":
     endpoint = TCP4ServerEndpoint(reactor, 10000)
     endpoint.listen(Factory.forProtocol(Iperf3MuxServer))
     #reactor.listenTCP(10000, Factory.forProtocol(Iperf3MuxServer))
+    print("ready")
     reactor.run()
