@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import iperf3
-import threading
+import multiprocessing
 import random
+import logging
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineOnlyReceiver
@@ -12,14 +13,15 @@ from twisted.internet import reactor
 class Iperf3MuxServer(LineOnlyReceiver):
 
     def __init__(self):
-        self.server_thread = None
+        self.server_process = None
         self.server_port = None
 
     def connectionMade(self):
         print("Connection made")
 
     def connectionLost(self, reason):
-        if (self.server_port is not None) or (self.server_thread is not None):
+        print("Connection lost")
+        if (self.server_port is not None) or (self.server_process is not None):
             self.stop_server()
         
     def lineReceived(self, line):
@@ -50,14 +52,14 @@ class Iperf3MuxServer(LineOnlyReceiver):
         server = iperf3.Server()
         server.bind_address = '0.0.0.0'
         server.port = port
-        self.server_thread = threading.Thread(target=server.run, args=[])
-        self.server_thread.start()
+        self.server_process = multiprocessing.Process(target=server.run, args=[])
+        self.server_process.start()
 
     def stop_server(self):
-        if self.server_thread is not None:
-            if self.server_thread.is_alive():
-                self.server_thread.join()
-            self.server_thread = None
+        if self.server_process is not None:
+            if self.server_process.is_alive():
+                self.server_process.terminate()
+            self.server_process = None
         if self.server_port is not None:
             self.server_port = None
 
@@ -65,6 +67,5 @@ class Iperf3MuxServer(LineOnlyReceiver):
 if __name__ == "__main__":
     endpoint = TCP4ServerEndpoint(reactor, 10000)
     endpoint.listen(Factory.forProtocol(Iperf3MuxServer))
-    #reactor.listenTCP(10000, Factory.forProtocol(Iperf3MuxServer))
     print("ready")
     reactor.run()
