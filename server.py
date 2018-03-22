@@ -19,19 +19,24 @@ class Iperf3ServerProcessProtocol(ProcessProtocol):
 class Iperf3MuxServer(LineOnlyReceiver):
     """Responsible for managing two things: a single server process, and a client connection"""
 
-    def __init__(self):
+    def __init__(self, factory):
+        self.factory = factory
         self.server_process = None
 
     def connectionMade(self):
-        print("connectionMade")
+        self.factory.addConnection(self)
+        self.client_host = self.transport.getPeer().host
+        self.client_port = self.transport.getPeer().port
+        print("{}:{} : connected".format(self.client_host, self.client_port))
 
     def connectionLost(self, reason):
-        print("Connection lost")
+        print("{}:{} : disconnected".format(self.client_host, self.client_port))
         self.clear_server()
+        self.factory.removeConnection()
         
     def lineReceived(self, line):
         if line.decode() == "SENDPORT":
-            print("SENDPORT received")
+            print("{}:{} : SENDPORT received".format(self.client_host, self.client_port))
             self.clear_server()
             port = random.randrange(10001, 20001)
             self.run_server(port)
@@ -59,15 +64,33 @@ class Iperf3MuxServer(LineOnlyReceiver):
 
 class Iperf3MuxServerFactory(Factory):
     
-    def __init__(self):
-        print("init method of Iperf3MuxServerFactory")
+    def __init__(self, max_connections):
+        # ensure max_connections >= 1
+        self.max_connections = max_connections
+        self.num_connections = 0
 
     def buildProtocol(self, addr):
-        return Iperf3MuxServer()
+        if self.num_connections + 1 > self.max_connections:
+            # log this
+            print("too many connections!")
+            return None
+        return Iperf3MuxServer(self)
+
+    def addConnection(self, protocol):
+        self.num_connections = self.num_connections + 1
+        print("Factory: {} connections active".format(self.num_connections))
+
+    def removeConnection(self):
+        if self.num_connections <= 0:
+            # log this, this is an error
+            print("too few connections!")
+            pass
+        else:
+            self.num_connections = self.num_connections - 1
+            print("Factory: {} connections active".format(self.num_connections))
 
 
 if __name__ == "__main__":
     endpoint = TCP4ServerEndpoint(reactor, 10000)
-    endpoint.listen(Iperf3MuxServerFactory())
-    print("ready")
+    endpoint.listen(Iperf3MuxServerFactory(3))
     reactor.run()
