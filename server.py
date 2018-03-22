@@ -3,69 +3,71 @@
 import iperf3
 import multiprocessing
 import random
-import logging
 from twisted.internet.endpoints import TCP4ServerEndpoint
-from twisted.internet.protocol import Factory
+from twisted.internet.protocol import Factory, ProcessProtocol
+from twisted.internet.error import ProcessExitedAlready
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import reactor
 
 
+class Iperf3ServerProcessProtocol(ProcessProtocol):
+
+    def connectionMade(self):
+        self.transport.closeStdin()
+
+
 class Iperf3MuxServer(LineOnlyReceiver):
+    """Responsible for managing two things: a single server process, and a client connection"""
 
     def __init__(self):
         self.server_process = None
-        self.server_port = None
 
     def connectionMade(self):
-        print("Connection made")
+        print("connectionMade")
 
     def connectionLost(self, reason):
         print("Connection lost")
-        if (self.server_port is not None) or (self.server_process is not None):
-            self.stop_server()
+        self.clear_server()
         
     def lineReceived(self, line):
-        decoded_line = line.decode()
-        if self.server_port is None:
-            if decoded_line == "SENDPORT":
-                print("SENDPORT received when self.server_port was None")
-                self.server_port = random.randrange(10001, 20001)
-                self.run_server(self.server_port)
-                self.sendLine(str(self.server_port).encode())
-            else:
-                print("{} received when self.server_port was None".format(line))
-                # log error
-                self.transport.loseConnection()
+        if line.decode() == "SENDPORT":
+            print("SENDPORT received")
+            self.clear_server()
+            port = random.randrange(10001, 20001)
+            self.run_server(port)
+            self.sendLine(str(port).encode())
         else:
-            if decoded_line == "SENDPORT":
-                print("SENDPORT received when self.server_port was NOT None")
-                self.stop_server()
-                self.server_port = random.randrange(10001, 20001)
-                self.run_server(self.server_port)
-                self.sendLine(self.server_port)
-            else:
-                print("{} received when self.server_port was NOT None".format(line))
-                # log error
-                self.transport.loseConnection()
+            print("error: invalid message {} received".format(line.decode()))
+            # log error
+            self.transport.loseConnection()
 
     def run_server(self, port):
-        server = iperf3.Server()
-        server.bind_address = '0.0.0.0'
-        server.port = port
-        self.server_process = multiprocessing.Process(target=server.run, args=[])
-        self.server_process.start()
+        process = Iperf3ServerProcessProtocol()
+        cmd = ["iperf3", "-s", "-p", str(port), "-1"]
+        self.server_process = reactor.spawnProcess(process, cmd[0], cmd)
 
-    def stop_server(self):
+    def clear_server(self):
+        """puts self.server_process into a known state"""
         if self.server_process is not None:
-            if self.server_process.is_alive():
-                self.server_process.terminate()
+            try:
+                self.server_process.signalProcess('KILL')
+            except ProcessExitedAlready:
+                # log error
+                pass
             self.server_process = None
-        if self.server_port is not None:
-            self.server_port = None
+
+
+class Iperf3MuxServerFactory(Factory):
+    
+    def __init__(self):
+        print("init method of Iperf3MuxServerFactory")
+
+    def buildProtocol(self, addr):
+        return Iperf3MuxServer()
 
 
 if __name__ == "__main__":
     endpoint = TCP4ServerEndpoint(reactor, 10000)
-    endpoint.listen(Factory.forProtocol(Iperf3MuxServer))
+    endpoint.listen(Iperf3MuxServerFactory())
     print("ready")
     reactor.run()
