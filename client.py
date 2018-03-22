@@ -19,11 +19,13 @@ class Iperf3MuxClient(Protocol):
         print("Port received: {}".format(self.test_port))
         try:
             result = self.run_test()
-            print("Test result: {}".format(result.sent_Mbps))
-            self.transport.loseConnection()
         except:
             self.transport.write("SENDPORT\r\n".encode())
             return
+        else:
+            print("Test result: {}".format(result.sent_Mbps))
+            self.transport.loseConnection()
+            reactor.stop()
 
     def run_test(self):
         test_client = iperf3.Client()
