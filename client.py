@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import iperf3
-from twisted.internet import reactor
 from twisted.internet.protocol import Protocol
 from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
+from twisted.internet import reactor
 
 
 class Iperf3MuxClient(Protocol):

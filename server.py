@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import iperf3
-import multiprocessing
 import random
 import sys
 from twisted.internet.endpoints import TCP4ServerEndpoint
