@@ -13,7 +13,11 @@ def test_up(host, port):
     test_client.server_hostname = host
     test_client.num_streams = 4
     result = do_iperf_test(host, port, test_client)
-    return result.sent_Mbps
+    try:
+        return result.sent_Mbps
+    except:
+        print(result)
+        raise
 
 
 def test_down(host, port):
