@@ -10,14 +10,15 @@ from twisted.logger import Logger, FileLogObserver, formatEventAsClassicLogText,
 from twisted.internet import reactor
 
 
-LOG_FILE = "log.txt"
-log_file = open(LOG_FILE, "a")
-
-
 class Iperf3ServerProcessProtocol(ProcessProtocol):
 
+    def __init__(self, calling_object):
+        self.calling_object = calling_object
+
     def connectionMade(self):
+        #print("iperf3 server process running; sending port")
         self.transport.closeStdin()
+        self.calling_object.send_port()
 
 
 class Iperf3MuxServer(LineOnlyReceiver):
@@ -28,6 +29,7 @@ class Iperf3MuxServer(LineOnlyReceiver):
     def __init__(self, factory):
         self.factory = factory
         self.server_process = None
+        self.server_port = None
 
     def connectionMade(self):
         self.factory.addConnection(self)
@@ -44,9 +46,8 @@ class Iperf3MuxServer(LineOnlyReceiver):
         if line.decode() == "SENDPORT":
             self.log.info("{log_source.client_host}:{log_source.client_port} => SENDPORT received")
             self.clear_server()
-            port = random.randrange(10001, 20001)
-            self.run_server(port)
-            self.sendLine(str(port).encode())
+            self.server_port = random.randrange(10001, 20001)
+            self.run_server()
         else:
             self.log.warn(
                 "{log_source.client_host}:{log_source.client_port} => invalid message {line} received",
@@ -54,19 +55,25 @@ class Iperf3MuxServer(LineOnlyReceiver):
             )
             self.transport.loseConnection()
 
-    def run_server(self, port):
-        process = Iperf3ServerProcessProtocol()
-        cmd = ["iperf3", "-s", "-p", str(port), "-1"]
+    def send_port(self):
+        #print("sending port {}".format(self.server_port))
+        self.sendLine(str(self.server_port).encode())
+
+    def run_server(self):
+        process = Iperf3ServerProcessProtocol(self)
+        cmd = ["iperf3", "-s", "-p", str(self.server_port), "-1"]
+        #print("spawning iperf3 server process")
         self.server_process = reactor.spawnProcess(process, cmd[0], cmd)
 
     def clear_server(self):
-        """puts self.server_process into original state"""
+        """puts object into original state"""
         if self.server_process is not None:
             try:
                 self.server_process.signalProcess('KILL')
             except ProcessExitedAlready:
                 pass
             self.server_process = None
+        self.server_port = None
 
 
 class Iperf3MuxServerFactory(Factory):
