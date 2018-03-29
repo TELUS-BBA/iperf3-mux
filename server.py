@@ -10,6 +10,11 @@ from twisted.logger import Logger, FileLogObserver, formatEventAsClassicLogText,
 from twisted.internet import reactor
 
 
+SERVER_PORT = 10000
+IPERF3_SERVER_PORT_MIN = 10001
+IPERF3_SERVER_PORT_MAX = 20000
+
+
 class Iperf3ServerProcessProtocol(ProcessProtocol):
 
     def __init__(self, calling_object):
@@ -46,7 +51,7 @@ class Iperf3MuxServer(LineOnlyReceiver):
         if line.decode() == "SENDPORT":
             self.log.info("{log_source.client_host}:{log_source.client_port} => SENDPORT received")
             self.clear_server()
-            self.server_port = random.randrange(10001, 20001)
+            self.server_port = random.randrange(IPERF3_SERVER_PORT_MIN, IPERF3_SERVER_PORT_MAX+1)
             self.run_server()
         else:
             self.log.warn(
@@ -106,6 +111,6 @@ class Iperf3MuxServerFactory(Factory):
 if __name__ == "__main__":
     log_file = sys.stdout # can be changed to whatever file descriptor you want
     globalLogPublisher.addObserver(FileLogObserver(log_file, formatEventAsClassicLogText))
-    endpoint = TCP4ServerEndpoint(reactor, 10000)
+    endpoint = TCP4ServerEndpoint(reactor, SERVER_PORT)
     endpoint.listen(Iperf3MuxServerFactory(3))
     reactor.run()
