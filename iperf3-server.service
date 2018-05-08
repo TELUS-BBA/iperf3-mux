@@ -1,0 +1,11 @@
+[Unit]
+Description=iperf3-mux server
+After=network.target
+
+[Service]
+ExecStart=/home/adam/iperf3-mux/server.py
+RestartSec=3
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
