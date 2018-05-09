@@ -54,5 +54,5 @@ def do_iperf_test(host, port, iperf_test):
 
 if __name__ == "__main__":
     print("Up: {} Mbit/s".format(test_up(HOST, PORT)))
-    #print("Down: {} Mbit/s".format(test_down(HOST, PORT)))
-    #print("Jitter: {} ms".format(test_jitter(HOST, PORT)))
+    print("Down: {} Mbit/s".format(test_down(HOST, PORT)))
+    print("Jitter: {} ms".format(test_jitter(HOST, PORT)))

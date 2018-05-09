@@ -8,6 +8,7 @@ from twisted.internet.error import ProcessExitedAlready
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.logger import Logger, FileLogObserver, formatEventAsClassicLogText, globalLogPublisher
 from twisted.internet import reactor
+from twisted.application import service, internet
 
 
 SERVER_PORT = 10000
@@ -108,9 +109,16 @@ class Iperf3MuxServerFactory(Factory):
             self.log.info("{log_source.num_connections} active connections")
 
 
-if __name__ == "__main__":
-    log_file = sys.stdout # can be changed to whatever file descriptor you want
-    globalLogPublisher.addObserver(FileLogObserver(log_file, formatEventAsClassicLogText))
-    endpoint = TCP4ServerEndpoint(reactor, SERVER_PORT)
-    endpoint.listen(Iperf3MuxServerFactory(3))
-    reactor.run()
+# This commented section can be uncommented (and the section below it commented) in order to
+# run from the command line with ./server.py
+#if __name__ == "__main__":
+#    log_file = sys.stdout # can be changed to whatever file descriptor you want
+#    globalLogPublisher.addObserver(FileLogObserver(log_file, formatEventAsClassicLogText))
+#    endpoint = TCP4ServerEndpoint(reactor, SERVER_PORT)
+#    endpoint.listen(Iperf3MuxServerFactory(3))
+#    reactor.run()
+
+application = service.Application("Demo application")
+iperf3_server = Iperf3MuxServerFactory(3)
+my_service = internet.TCPServer(SERVER_PORT, iperf3_server)
+my_service.setServiceParent(application)
