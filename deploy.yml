@@ -23,18 +23,22 @@
       loop:
         - twisted
 
-    - name: clone git repo
-      git:
-        repo: https://github.com/adamkpickering/iperf3-mux.git
-        dest: /home/adam/iperf3-mux
-        force: true
-
-    - name: link between iperf3-server.service and /etc/systemd/system/iperf3-server.service
-      become: true
+    - name: create iperf3-server folder
       file:
-        state: link
-        src: /home/adam/iperf3-mux/iperf3-server.service
+        path: /home/adam/iperf3-server
+        state: directory
+
+    - name: copy server.py to server
+      copy:
+        src: server.py
+        dest: /home/adam/iperf3-server/server.py
+
+    - name: copy iperf3-server.service to /etc/systemd/system/iperf3-server.service
+      become: true
+      copy:
+        src: iperf3-server.service
         dest: /etc/systemd/system/iperf3-server.service
+        mode: 0777
 
     - name: activate service etc
       become: true
@@ -42,4 +46,4 @@
         name: iperf3-server
         enabled: true
         state: restarted
-        daemon_reload: yes
+        daemon_reload: true
