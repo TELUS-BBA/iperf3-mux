@@ -3,7 +3,7 @@ Description=iperf3-mux server
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/twistd --nodaemon --pidfile= -y /home/adam/iperf3-server/server.py
+ExecStart=/usr/local/bin/twistd --nodaemon --pidfile= -y /home/adam/testing-server/server.py
 RestartSec=3
 Restart=always
 

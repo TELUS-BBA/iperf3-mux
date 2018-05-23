@@ -23,15 +23,21 @@
       loop:
         - twisted
 
-    - name: create iperf3-server folder
+    - name: create testing-server folder
       file:
-        path: /home/adam/iperf3-server
+        path: /home/adam/testing-server
         state: directory
 
     - name: copy server.py to server
       copy:
         src: server.py
-        dest: /home/adam/iperf3-server/server.py
+        dest: /home/adam/testing-server/server.py
+
+    - name: copy sockperf to server
+      copy:
+        src: sockperf
+        dest: /home/adam/testing-server/sockperf
+        mode: 0775
 
     - name: copy iperf3-server.service to /etc/systemd/system/iperf3-server.service
       become: true
@@ -40,10 +46,25 @@
         dest: /etc/systemd/system/iperf3-server.service
         mode: 0777
 
-    - name: activate service etc
+    - name: copy sockperf-server.service to /etc/systemd/system/sockperf-server.service
+      become: true
+      copy:
+        src: sockperf-server.service
+        dest: /etc/systemd/system/sockperf-server.service
+        mode: 0777
+
+    - name: activate iperf3-server service
       become: true
       systemd:
         name: iperf3-server
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    - name: activate sockperf-server service
+      become: true
+      systemd:
+        name: sockperf-server
         enabled: true
         state: restarted
         daemon_reload: true
