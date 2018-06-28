@@ -14,6 +14,7 @@ from twisted.application import service, internet
 SERVER_PORT = 10000
 IPERF3_SERVER_PORT_MIN = 10001
 IPERF3_SERVER_PORT_MAX = 20000
+IPERF3_MAX_CONCURRENT_TESTS = 9
 
 
 class Iperf3ServerProcessProtocol(ProcessProtocol):
@@ -22,7 +23,6 @@ class Iperf3ServerProcessProtocol(ProcessProtocol):
         self.calling_object = calling_object
 
     def connectionMade(self):
-        #print("iperf3 server process running; sending port")
         self.transport.closeStdin()
         self.calling_object.send_port()
 
@@ -62,13 +62,11 @@ class Iperf3MuxServer(LineOnlyReceiver):
             self.transport.loseConnection()
 
     def send_port(self):
-        #print("sending port {}".format(self.server_port))
         self.sendLine(str(self.server_port).encode())
 
     def run_server(self):
         process = Iperf3ServerProcessProtocol(self)
         cmd = ["iperf3", "-s", "-p", str(self.server_port), "-1"]
-        #print("spawning iperf3 server process")
         self.server_process = reactor.spawnProcess(process, cmd[0], cmd)
 
     def clear_server(self):
@@ -115,10 +113,10 @@ class Iperf3MuxServerFactory(Factory):
 #    log_file = sys.stdout # can be changed to whatever file descriptor you want
 #    globalLogPublisher.addObserver(FileLogObserver(log_file, formatEventAsClassicLogText))
 #    endpoint = TCP4ServerEndpoint(reactor, SERVER_PORT)
-#    endpoint.listen(Iperf3MuxServerFactory(3))
+#    endpoint.listen(Iperf3MuxServerFactory(IPERF3_MAX_CONCURRENT_TESTS))
 #    reactor.run()
 
 application = service.Application("Demo application")
-iperf3_server = Iperf3MuxServerFactory(3)
+iperf3_server = Iperf3MuxServerFactory(IPERF3_MAX_CONCURRENT_TESTS)
 my_service = internet.TCPServer(SERVER_PORT, iperf3_server)
 my_service.setServiceParent(application)
