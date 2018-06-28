@@ -1,13 +1,51 @@
 # iperf3-mux
-This repo contains a way of getting around iperf3's inability
-to conduct multiple simultaneous tests on a single iperf3 server.
 
-It uses twisted to listen for a single utf-8 formatted message: "SENDPORT\r\n".
-When it receives this message it starts up an iperf server as a sub-process
-on a port between 10001 and 20000 inclusive, and sends that port back.
-If any errors occur, the server closes the connection.
-The server that is started as a sub-process is only good for one test;
-if one wants to do multiple tests one must get another server port by sending SENDPORT again.
+iperf3 servers do not support multiple simultaneous tests.
+I have solved this problem by wrapping it in some python scripts that
+manage multiple iperf3 servers as subprocesses.
+It is a hack, but it works.
+A typical test looks like:
 
-To use, install twisted and iperf3 and then run it using ./server.py.
-If you want to change the port that the server listens on, I'm sure you can figure that out :)
+1.  The main server listens on a fixed TCP port defined by the constant `SERVER_PORT`.
+
+1.  A client connects to this port and sends a UTF-8 formatted message "SENDPORT\r\n".
+
+1.  Upon receiving this message (and only this message) the server picks a random
+    port between `IPERF3_SERVER_PORT_MIN` and `IPERF3_SERVER_PORT_MAX` inclusive
+    and starts an iperf3 server subprocess that occupies the port.
+
+1.  The server sends the port back to the client, encoded once again as UTF-8.
+
+1.  The client can now use that port to perform an iperf3 test as usual.
+
+Important Notes:
+
+- The client must maintain the first connection it makes
+  for the duration of the test - when this connection is broken
+  the server assumes that the client is done with the test and kills the iperf3 server subprocess.
+
+- Each iperf3 server is good for only one test.
+  If you want to perform multiple tests you must send "SENDPORT\r\n" etc.
+  once for each test.
+
+- If any exceptions occur on the server side then the server closes the connection.
+
+- In the rare case that the port the server randomly chooses is occupied,
+  the server may still send out that port. In this case an exception will
+  be raised on the client side - it is up to the client to recognize this
+  and close the connection. See example_client.py for example code.
+
+- A limit must be placed on the maximum number of iperf3 server subprocesses,
+  since test results can be affected if the server's network connection
+  is not fast enough to serve all of the connected clients.
+  For example, if I have a server with a 10 Gbit/s uplink and my clients are
+  capable of 1 Gbit/s, I should set my `IPERF3_MAX_CONCURRENT_TESTS` to 9
+  (10 is max capability, subtract one to be safe).
+
+- Since it was a pain to get a systemd service for this running,
+  I've included a file that works (at least, for me) - see iperf3-server.service.
+
+
+## Installation
+
+You need `iperf3` and the python's `twisted`.
