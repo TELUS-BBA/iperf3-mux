@@ -13,6 +13,7 @@ def run_iperf_test(host, port, test_func):
     with socket.create_connection((host, port), 2) as s:
         s.sendall("SENDPORT\r\n".encode())
         received_port = int(s.recv(4096).decode())
+        # the server needs some time to set up the server subprocess
         time.sleep(1)
         result = test_func(host, received_port)
     return result
